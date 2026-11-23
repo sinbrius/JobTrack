@@ -1,22 +1,22 @@
-using JobTrack.Api.Models;
+using JobTrack.Api.DTOs;
 using JobTrack.Api.Enums;
 
 namespace JobTrack.Api.Validators;
 
 public class JobApplicationValidator
 {
-    public string? Validate(JobApplication application)
+    public string? Validate(CreateJobApplicationDto dto)
     {
-        if (string.IsNullOrWhiteSpace(application.CompanyName))
+        if (string.IsNullOrWhiteSpace(dto.CompanyName))
             return "Şirket adı zorunludur.";
 
-        if (string.IsNullOrWhiteSpace(application.Position))
+        if (string.IsNullOrWhiteSpace(dto.Position))
             return "Pozisyon zorunludur.";
 
-        if (string.IsNullOrWhiteSpace(application.Location))
+        if (string.IsNullOrWhiteSpace(dto.Location))
             return "Konum zorunludur.";
 
-        if (!Enum.IsDefined(typeof(ApplicationStatus), application.Status))
+        if (!Enum.IsDefined(typeof(ApplicationStatus), dto.Status))
             return "Geçersiz başvuru durumu.";
         return null;
     }

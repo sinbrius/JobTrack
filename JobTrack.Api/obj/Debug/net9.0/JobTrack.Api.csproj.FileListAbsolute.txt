@@ -154,3 +154,4 @@ C:\Users\Feyzanur\JobTrack\JobTrack.Api\bin\Debug\net9.0\runtimes\win-arm\native
 C:\Users\Feyzanur\JobTrack\JobTrack.Api\bin\Debug\net9.0\runtimes\win-arm64\native\e_sqlite3.dll
 C:\Users\Feyzanur\JobTrack\JobTrack.Api\bin\Debug\net9.0\runtimes\win-x64\native\e_sqlite3.dll
 C:\Users\Feyzanur\JobTrack\JobTrack.Api\bin\Debug\net9.0\runtimes\win-x86\native\e_sqlite3.dll
+C:\Users\Feyzanur\JobTrack\JobTrack.Api\obj\Debug\net9.0\JobTrack.Api.sourcelink.json

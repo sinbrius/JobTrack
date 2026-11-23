@@ -1,8 +1,11 @@
 using Microsoft.OpenApi.Models;
-using JobTrack.Api.Models;
 using JobTrack.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using JobTrack.Api.Validators;
+using JobTrack.Api.Services ;
+using JobTrack.Api.DTOs;
+
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite("Data Source=jobtrack.db"));
@@ -10,6 +13,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<JobApplicationValidator>();
 
 builder.Services.AddProblemDetails(); //standart hata yanıtları için
+builder.Services.AddScoped<IJobApplicationService, JobApplicationService>();
 // Swagger servisleri
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -17,7 +21,6 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
 });
 builder.Services.AddSwaggerGen();
-builder .Services.AddProblemDetails();
 
 var app = builder.Build();
 app.UseExceptionHandler(); //yakalanmamış istisnalar için hata işleyici
@@ -29,79 +32,70 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapGet("/api/applications", async (AppDbContext db) =>
+app.MapGet("/api/applications", async (IJobApplicationService jobApplicationService) =>
 {
-   return Results.Ok(await db.JobApplications.ToListAsync());
+    var applications = await jobApplicationService.GetAllApplicationsAsync();
+    return Results.Ok(applications);
 })
 .WithName("GetJobTracks");
 
-app.MapGet("/api/applications/{id}", async (int id, AppDbContext db) =>
+app.MapGet("/api/applications/{id}", async (int id, IJobApplicationService jobApplicationService) =>
 {
-    var application = await db.JobApplications.FindAsync(id);
+    var application = await jobApplicationService.GetApplicationByIdAsync(id);
     if (application is null)
     {
         return Results.NotFound();
     }
 
     return Results.Ok(application);
-});
-
-app.MapPut("/api/applications/{id}", async (int id, JobApplication UpdatedApplication, AppDbContext db, JobApplicationValidator validator) =>
-{
-    var validationError = validator.Validate(UpdatedApplication);
-    if (validationError != null)
-    {
-        return Results.BadRequest(validationError);
-    }
-    var application = await db.JobApplications.FindAsync(id);
-
-    if(application is null)
-    {
-        return Results.NotFound();
-    }
-
-    application.CompanyName=UpdatedApplication.CompanyName;
-    application.Position=UpdatedApplication.Position;
-    application.Location=UpdatedApplication.Location;
-    application.Status=UpdatedApplication.Status;
-    application.Notes=UpdatedApplication.Notes;
-
-    return Results.Ok(application);
-});
-
-app.MapDelete("/api/application/{id}", async (int id, AppDbContext db) =>
-{
-    var application = await db.JobApplications.FindAsync(id);
-
-    if(application is null){
-        return Results.NotFound();
-    }
+}).WithName("GetJobApplication");
     
-    db.JobApplications.Remove(application);
-    await db.SaveChangesAsync();
-
+app.MapPut("/api/applications/{id}", async (int id, UpdatedJobApplicationDto dto, IJobApplicationService jobApplicationService, JobApplicationValidator validator) =>
+{
+    var (isNotFound, error) = await jobApplicationService.UpdateApplicationAsync(id, dto);
+    if (isNotFound)
+    {
+        return Results.NotFound();
+    }
+    if (error != null)
+    {
+        return Results.BadRequest(error);
+    }
     return Results.NoContent();
-}).WithName("MapDelete");
+}).WithName("UpdateJobApplication");
+/**/
 
-app.MapPost("/api/applications", async (JobApplication application, AppDbContext db, JobApplicationValidator validator) =>
+
+app.MapDelete("/api/applications/{id}", async (int id, IJobApplicationService jobApplicationService) =>
 {
-    var validationError = validator.Validate(application);
-    if (validationError != null)
+    var (isNotFound, error) = await jobApplicationService.DeleteApplicationAsync(id);
+    if (isNotFound)
     {
-        return Results.BadRequest(validationError);
+        return Results.NotFound();
     }
+    if (error != null)
+    {
+        return Results.BadRequest(error);
+    }
+    return Results.NoContent();
+}).WithName("DeleteJobApplication");
 
-    db.JobApplications.Add(application);
-    await db.SaveChangesAsync();
-
-    
-
-    return Results.Created(
-        $"/api/applications/{application.Id}",
-        application
-    );
-});
-
+app.MapPost("/api/applications", async (CreateJobApplicationDto dto, IJobApplicationService jobApplicationService, JobApplicationValidator validator) =>
+{
+    var (createdDto, error) = await jobApplicationService.CreateApplicationAsync(dto);
+    if (error != null)
+    {
+        return Results.BadRequest(error);
+    }
+    return Results.Created($"/api/applications/{createdDto.Id}", createdDto);
+}).WithName("CreateJobApplication");
+/*Kodunun akışı şöyle:
+1. DTO kullanıcıdan gelen JSON verisini alıyor.
+2. validator.Validate(dto) verileri kontrol ediyor.
+3. Hata varsa HTTP 400 dönüyor.
+4. Hata yoksa DTO, JobApplication entity'sine dönüştürülüyor.
+5. Entity veritabanına ekleniyor.
+6. HTTP 201 dönüyor.*/
 
 
 app.Run();
