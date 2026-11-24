@@ -3,6 +3,7 @@ using JobTrack.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using JobTrack.Api.Validators;
 using JobTrack.Api.DTOs;
+using JobTrack.Api.Enums;
 
 namespace JobTrack.Api.Services;
 public class JobApplicationService : IJobApplicationService
@@ -16,12 +17,28 @@ public class JobApplicationService : IJobApplicationService
         _validator = validator;
     }
 
-    public async Task<List<JobApplicationResponseDto>> GetAllApplicationsAsync()
+    public async Task<List<JobApplicationResponseDto>> GetAllApplicationsAsync(ApplicationStatus? statusFilter = null,string? searchTerm = null, int pageNumber = 1, int pageSize = 10)
     {
-        var applications = await _dbContext.JobApplications.ToListAsync();
+        var query = _dbContext.JobApplications.AsQueryable();
 
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            query = query.Where(a => a.CompanyName.Contains(searchTerm.ToLower()) || a.Position.Contains(searchTerm.ToLower()));
+        }
 
-        return applications.Select(a=> MapToResponseDto(a)).ToList();
+        if (statusFilter.HasValue)
+        {
+            query = query.Where(a => a.Status == statusFilter.Value);
+        }
+        
+
+        var applications = await query
+        .OrderByDescending(a => a.AppliedDate) //En yeni başvuruların en üstte görünmesi için AppliedDates'e göre sıralama
+        .Skip((pageNumber-1)*pageSize)
+        .Take(pageSize)
+        .ToListAsync();
+
+        return applications.Select(a => MapToResponseDto(a)).ToList();
     }
     public async Task<JobApplicationResponseDto?> GetApplicationByIdAsync(int id)
     {
@@ -111,7 +128,8 @@ public class JobApplicationService : IJobApplicationService
             Position = application.Position,
             Location = application.Location,
             Status = application.Status,
-            Notes = application.Notes
+            Notes = application.Notes,
+            AppliedDates = application.AppliedDates
         };
     }
 }

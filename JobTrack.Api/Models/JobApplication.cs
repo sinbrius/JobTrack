@@ -16,5 +16,7 @@ namespace JobTrack.Api.Models
         public ApplicationStatus Status { get; set; } = ApplicationStatus.Applied;
 
         public string? Notes { get; set; }
+
+        public DateTime AppliedDates { get; set; } = DateTime.UtcNow;
     }
 }

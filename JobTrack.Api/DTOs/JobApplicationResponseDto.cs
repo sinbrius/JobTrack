@@ -11,4 +11,6 @@ public class JobApplicationResponseDto
     public ApplicationStatus Status { get; set; } = ApplicationStatus.Applied;
 
     public string Notes { get; set; } = string.Empty;
+
+    public DateTime AppliedDates { get; set; }
 }
